@@ -88,3 +88,11 @@ copy importacion.municipio from 'C:\Users\tadeo\Dropbox\Facultad\Base_de_Datos\T
 
 INSERT INTO territorio.provincia (id_provincia,identificador,nombre) 
         SELECT i.id, i.id, i.nombre_completo FROM importacion.provincia i
+
+
+INSERT INTO territorio.departamento (id_departamento,id_provincia,identificador,nombre) 
+        SELECT d.id, d.provincia_id, d.id, d.nombre_completo FROM importacion.departamento d
+
+--- PROBLEMA AL CARGAR ID_DEPARTAMENTO----
+INSERT INTO territorio.municipio (id_municipio,id_departamento,identificador,nombre) 
+        SELECT m.id, m.provincia_id, m.id, m.nombre_completo FROM importacion.municipio m
