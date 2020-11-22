@@ -1,0 +1,1 @@
+ALTER TABLE territorio.provincia ALTER COLUMN nombre TYPE character varying (120) 
