@@ -14,9 +14,9 @@ drop table casos.determinacionpcr
 
 create table casos.determinacionpcr (
    id_determinacionpcr  SERIAL               not null,
-   id_localidad         smallint              not null,
+   id_localidad         int                  not null,
    fecharealizacion     Date                  not null,
-   total                smallint              not null,
+   total                int                  not null,
    positivos            integer               not null,
    origenfinanciamiento varchar(8)             not null,
    constraint chk_origenfinanciamiento check (origenfinanciamiento in ('Público','Privado')),
