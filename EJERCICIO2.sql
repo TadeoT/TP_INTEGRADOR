@@ -68,8 +68,9 @@ DECLARE
 	cursor_determinaciones CURSOR FOR
 		SELECT fecha,codigo_indec_provincia, codigo_indec_departamento, codigo_indec_localidad, total, positivos, origen_financiamiento
 		FROM importacion.determinacionespcr;
-    ruta_nombre_full varchar (200);
-    result importacion.t_resultado_importacion;
+        ruta_nombre_full varchar (200);
+        vCantFilas integer;
+        result importacion.t_resultado_importacion;
 	fecha_aux date;
 	codigo_provincia int;
 	codigo_localidad int;
@@ -85,6 +86,9 @@ BEGIN
         ruta_nombre_full = $1 || '\' || $2;
         DELETE  from importacion.determinacionespcr;
         EXECUTE 'copy importacion.determinacionespcr from '''||ruta_nombre_full||''' CSV HEADER DELIMITER '',''  ';
+
+        SELECT COUNT(1) INTO vCantFilas FROM importacion.determinacionespcr;
+        result.cant_filas := vCantFilas;
 
         UPDATE importacion.determinacionespcr set positivos = 0 where positivos is null;
 
@@ -139,7 +143,8 @@ BEGIN
 
                 IF NOT EXISTS (SELECT * FROM casos.determinacionpcr
                                         WHERE id_localidad = id_localidad_concatenado
-                                        AND origenfinanciamiento = origen_aux) THEN
+                                        AND origenfinanciamiento = origen_aux
+                                        AND fecharealizacion = fecha_aux) THEN
                                 --Creamos una nueva fila
                                 INSERT INTO casos.determinacionpcr
                                         VALUES (DEFAULT,id_localidad_concatenado, fecha_aux, total_aux, positivos_aux, origen_aux);
@@ -149,22 +154,23 @@ BEGIN
                                         SET total = total + total_aux, 
                                         positivos = positivos + positivos_aux
                                         WHERE id_localidad = id_localidad_concatenado
-                                        AND origenfinanciamiento = origen_aux;
+                                        AND origenfinanciamiento = origen_aux AND fecharealizacion = fecha_aux;
+
                 END IF;
 
                 END LOOP;
-	        	CLOSE cursor_determinaciones;
+	        CLOSE cursor_determinaciones;
                 result.codigo_resultado := 0;
                 result.texto_resultado := 'Importación completada';
                 result.texto_detalle := 'Importacion correcta del archivo '|| ruta_nombre_full;
-				RETURN result;
+		RETURN result;
         EXCEPTION
                 WHEN OTHERS THEN
                 result.codigo_resultado := -1;
                 result.texto_resultado := 'Importación errónea o incompleta';
                 result.texto_detalle := 'ERROR AL PASAR DATOS AL SCHEMA CASOS';
                 RAISE NOTICE 'ERROR AL PASAR AL SCHEMA CASOS. ERROR SQLERRM: % SQLSTATE: %', SQLERRM, SQLSTATE;
-				RETURN result;
+		RETURN result;
         END;
 EXCEPTION
         WHEN OTHERS THEN
@@ -172,7 +178,7 @@ EXCEPTION
         result.texto_resultado := 'Importación errónea o incompleta';
         result.texto_detalle := 'ERROR AL PASAR DATOS AL SCHEMA CASOS';
         RAISE NOTICE 'ERROR AL CARGAR DATOS DEL ARCHIVO. ERROR SQLERRM: % SQLSTATE: %', SQLERRM, SQLSTATE;
-		RETURN result;
+	RETURN result;
 
 END;
 $$;	
