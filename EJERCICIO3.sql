@@ -28,8 +28,14 @@ residencia_departamento_id  integer not null,
 ultima_actualizacion date not null
 )
 
+select distinct clasificacion from importacion_caso;
 
+aux_identificador, aux_id_clasificacion, aux_id_pais, aux_id_provincia_residencia,aux_id_provincia_carga,
+aux_id_departamento, id_actualizacioncasos, aux_sexo, aux_edad, aux_unidadedad, aux_fechainiciosintomas,
+aux_fechaapartura, aux_fechainternacion, aux_cuidadointensivo, aux_fechafallecido, aux_asistenciarespiratoria,
+aux_fechadiagnostico, aux_origenfinanciamiento;
 
+select importacion_caso('C:\Users\tadeo\Dropbox\Facultad\Base_de_Datos\TP INTEGRADOR 2\Data','Covid19Casos(cortado).csv')
 CREATE OR REPLACE FUNCTION importacion_caso(
         ruta_archivo varchar(120),
         nombre_archivo varchar(120)
@@ -40,16 +46,48 @@ AS
 $$
 DECLARE 
         cursor_caso CURSOR FOR
-		        SELECT id_evento_caso
+		        SELECT id_evento_caso, ,
 		        FROM importacion.caso;
         ruta_nombre_full varchar (200);
         vCantFilas integer;
         result importacion.t_resultado_importacion;
         aux_identificador integer;
+        aux_fechaActualizacion date;
+        aux_id_fechaactualizacion integer;
+        aux_id_clasificacion     smallint;    
+        aux_id_pais              smallint;    
+        aux_id_provincia_residencia smallint; 
+        aux_id_provincia_carga   smallint;
+        aux_id_departamento      smallint;    
+        aux_id_actualizacioncasos smallinT;
+        aux_identificador        smallint;    
+        aux_sexo                 varchar(1); 
+        aux_edad                 smallint;    
+        aux_unidadedad           varchar(2);
+        aux_fechainiciosintomas  Date; 
+        aux_fechaapartura        Date; 
+        aux_fechainternacion     Date;
+        aux_cuidadointensivo     BOOLEAN;  
+        aux_fechafallecido       DATE;
+        aux_asistenciarespiratoria BOOLEAN;
+        aux_fechadiagnostico     DATE;
+        aux_origenfinanciamiento varchar(8),
+
 BEGIN
         ruta_nombre_full = $1 || '\' || $2;
         DELETE  from importacion.caso;
         EXECUTE 'copy importacion.caso from '''||ruta_nombre_full||''' CSV HEADER DELIMITER '',''  ';
+
+        SELECT ultima_actualizacion INTO aux_fechaActualizacion FROM importacion.caso LIMIT 1;
+        -- vemos si existe esa fecha de actualizacion en la tabla actualizacioncasos
+        IF NOT EXISTS (select fecha_actualizacion FROM casos.actualizacioncasos 
+                                WHERE fecha_actualizacion = aux_fechaActualizacion ) THEN
+
+                            INSERT INTO casos.actualizacioncasos (fecha_actualizacion) VALUES (aux_fechaActualizacion);
+							RAISE NOTICE 'insert fecharealizacion';
+                            END IF;
+        SELECT  id_actualizacioncasos INTO aux_id_fechaactualizacion from casos.actualizacioncasos 
+                                    WHERE  fecha_actualizacion = aux_fechaActualizacion;
 
         SELECT COUNT(1) INTO vCantFilas FROM importacion.caso;
         result.cant_filas := vCantFilas;
@@ -59,9 +97,31 @@ BEGIN
             LOOP 
             FETCH NEXT 
                     FROM cursor_caso
-                    INTO aux_identificador;
+                    INTO aux_identificador, aux_id_clasificacion, aux_id_pais, aux_id_provincia_residencia,aux_id_provincia_carga,
+                        aux_id_departamento, id_actualizacioncasos, aux_sexo, aux_edad, aux_unidadedad, aux_fechainiciosintomas,
+                        aux_fechaapartura, aux_fechainternacion, aux_cuidadointensivo, aux_fechafallecido, aux_asistenciarespiratoria,
+                        aux_fechadiagnostico, aux_origenfinanciamiento;
             EXIT WHEN NOT FOUND;
+            IF aux_fechaActualizacion < '2020-01-01' THEN
+                        CONTINUE;
+                        END IF;
+            IF NOT EXISTS (SELECT * FROM casos.caso
+                                        WHERE identificador = aux_identificador
+                                        AND id_actualizacioncasos = aux_id_fechaactualizacion) THEN
+                                --Creamos una nueva fila
+                                RAISE NOTICE 'insert caso';
+                                --INSERT INTO casos.determinacionpcr
+                                        --VALUES (DEFAULT,id_localidad_concatenado, fecha_aux, total_aux, positivos_aux, origen_aux);
+                        ELSE
+                                RAISE NOTICE 'insert caso repetido';
+                                --Si ya fue registrada la localidad, sumamos los casos
+                                --UPDATE casos.determinacionpcr
+                                        --SET total = total + total_aux, 
+                                        --positivos = positivos + positivos_aux
+                                        --WHERE id_localidad = id_localidad_concatenado
+                                        --AND origenfinanciamiento = origen_aux AND fecharealizacion = fecha_aux;
 
+                END IF;
             RAISE NOTICE 'id del caso %', aux_identificador;
 
 
@@ -82,3 +142,6 @@ EXCEPTION
         RETURN result;
 END;
 $$;
+
+
+

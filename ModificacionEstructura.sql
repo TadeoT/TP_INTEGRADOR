@@ -25,3 +25,15 @@ create table casos.determinacionpcr (
    constraint fk_determinacionpcr_localidad foreign key (id_localidad) references territorio.localidad (id_localidad)
 );
 create index idx_determinacionpcr_localidad ON casos.determinacionpcr (id_localidad);
+
+
+
+CREATE SEQUENCE actualizacioncasos_a_seq START WITH 1
+ALTER TABLE casos.actualizacioncasos ALTER COLUMN id_actualizacioncasos SET DEFAULT nextval('actualizacioncasos_a_seq');
+
+
+CREATE SEQUENCE clasificacion_a_seq START WITH 1
+ALTER TABLE casos.clasificacion ALTER COLUMN id_clasificacion SET DEFAULT nextval('clasificacion_a_seq');
+
+CREATE SEQUENCE codigo_a_seq START WITH 1
+ALTER TABLE casos.clasificacion ALTER COLUMN codigo SET DEFAULT nextval('codigo_a_seq');
