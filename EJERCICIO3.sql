@@ -27,15 +27,21 @@ fecha_diagnostico  date null,
 residencia_departamento_id  integer not null,
 ultima_actualizacion date not null
 )
+INSERT INTO personas.pais (id,codigo,nombre) VALUES (1,1,'Argentina')
+INSERT INTO personas.pais (id,codigo,nombre) VALUES (0,0,'SIN ESPECIFICAR')
+INSERT INTO casos.clasificacion (id_clasificacion,codigo,descripcion) VALUES (1,1,'Descartado');
+INSERT INTO casos.clasificacion (id_clasificacion,codigo,descripcion) VALUES (2,2,'Confirmado');
+INSERT INTO casos.clasificacion (id_clasificacion,codigo,descripcion) VALUES (3,3,'Sospechoso');
 
-select distinct clasificacion from importacion_caso;
-
-aux_identificador, aux_id_clasificacion, aux_id_pais, aux_id_provincia_residencia,aux_id_provincia_carga,
-aux_id_departamento, id_actualizacioncasos, aux_sexo, aux_edad, aux_unidadedad, aux_fechainiciosintomas,
-aux_fechaapartura, aux_fechainternacion, aux_cuidadointensivo, aux_fechafallecido, aux_asistenciarespiratoria,
-aux_fechadiagnostico, aux_origenfinanciamiento;
 
 select importacion_caso('C:\Users\tadeo\Dropbox\Facultad\Base_de_Datos\TP INTEGRADOR 2\Data','Covid19Casos(cortado).csv')
+
+
+aux_identificador, aux_id_clasificacion, aux_id_pais, aux_id_provincia_residencia,aux_id_provincia_carga,
+                        aux_sexo, aux_edad, aux_unidadedad, aux_fechainiciosintomas,
+                        aux_fechaapartura, aux_fechainternacion, aux_cuidadointensivo, aux_fechafallecido, aux_asistenciarespiratoria,
+                        aux_fechadiagnostico, aux_origenfinanciamiento;
+
 CREATE OR REPLACE FUNCTION importacion_caso(
         ruta_archivo varchar(120),
         nombre_archivo varchar(120)
@@ -46,7 +52,9 @@ AS
 $$
 DECLARE 
         cursor_caso CURSOR FOR
-		        SELECT id_evento_caso, ,
+		        SELECT id_evento_caso, clasificacion_resumen, residencia_pais_nombre, residencia_provincia_id, carga_provincia_id,
+                        sexo, edad, edad_años_meses, fecha_inicio_sintomas, fecha_apertura, fecha_internacion, cuidado_intensivo, fecha_fallecimiento,
+                        asistencia_respiratoria_mecanica, fecha_diagnostico, origen_financiamiento
 		        FROM importacion.caso;
         ruta_nombre_full varchar (200);
         vCantFilas integer;
@@ -59,11 +67,10 @@ DECLARE
         aux_id_provincia_residencia smallint; 
         aux_id_provincia_carga   smallint;
         aux_id_departamento      smallint;    
-        aux_id_actualizacioncasos smallinT;
-        aux_identificador        smallint;    
-        aux_sexo                 varchar(1); 
+        aux_id_actualizacioncasos smallint;  
+        aux_sexo                 varchar(8); 
         aux_edad                 smallint;    
-        aux_unidadedad           varchar(2);
+        aux_unidadedad           varchar(8);
         aux_fechainiciosintomas  Date; 
         aux_fechaapartura        Date; 
         aux_fechainternacion     Date;
@@ -71,7 +78,7 @@ DECLARE
         aux_fechafallecido       DATE;
         aux_asistenciarespiratoria BOOLEAN;
         aux_fechadiagnostico     DATE;
-        aux_origenfinanciamiento varchar(8),
+        aux_origenfinanciamiento varchar(8);
 
 BEGIN
         ruta_nombre_full = $1 || '\' || $2;
@@ -89,6 +96,15 @@ BEGIN
         SELECT  id_actualizacioncasos INTO aux_id_fechaactualizacion from casos.actualizacioncasos 
                                     WHERE  fecha_actualizacion = aux_fechaActualizacion;
 
+
+        
+        UPDATE importacion.caso set clasificacion_resumen = 1 WHERE clasificacion_resumen = 'Descartado';
+        UPDATE importacion.caso set clasificacion_resumen = 2 WHERE clasificacion_resumen = 'Confirmado';
+        UPDATE importacion.caso set clasificacion_resumen = 3 WHERE clasificacion_resumen = 'Sospechoso';
+        UPDATE importacion.caso set residencia_pais_nombre = 1 WHERE residencia_pais_nombre = 'Argentina';
+        UPDATE importacion.caso set residencia_pais_nombre = 0 WHERE residencia_pais_nombre = 'SIN ESPECIFICAR';
+
+
         SELECT COUNT(1) INTO vCantFilas FROM importacion.caso;
         result.cant_filas := vCantFilas;
 
@@ -98,7 +114,7 @@ BEGIN
             FETCH NEXT 
                     FROM cursor_caso
                     INTO aux_identificador, aux_id_clasificacion, aux_id_pais, aux_id_provincia_residencia,aux_id_provincia_carga,
-                        aux_id_departamento, id_actualizacioncasos, aux_sexo, aux_edad, aux_unidadedad, aux_fechainiciosintomas,
+                        aux_sexo, aux_edad, aux_unidadedad, aux_fechainiciosintomas,
                         aux_fechaapartura, aux_fechainternacion, aux_cuidadointensivo, aux_fechafallecido, aux_asistenciarespiratoria,
                         aux_fechadiagnostico, aux_origenfinanciamiento;
             EXIT WHEN NOT FOUND;
@@ -110,16 +126,18 @@ BEGIN
                                         AND id_actualizacioncasos = aux_id_fechaactualizacion) THEN
                                 --Creamos una nueva fila
                                 RAISE NOTICE 'insert caso';
-                                --INSERT INTO casos.determinacionpcr
-                                        --VALUES (DEFAULT,id_localidad_concatenado, fecha_aux, total_aux, positivos_aux, origen_aux);
+                                INSERT INTO casos.caso(id_clasificacion, id_pais, id_provincia_residencia, id_provincia_carga, id_departamento,
+														id_actualizacioncasos,identificador,sexo,edad,unidadedad,fechainiciosintomas,
+														fechaapartura, fechainternacion, cuidadointensivo, fechafallecido,asistenciarespiratoria,
+														fechadiagnostico,origenfinanciamiento)
+                                        VALUES (aux_id_clasificacion, aux_id_pais, 
+                                                aux_id_provincia_residencia,aux_id_provincia_carga,
+                                                6412,aux_id_fechaactualizacion,aux_identificador,
+                                                aux_sexo, aux_edad, aux_unidadedad, aux_fechainiciosintomas, 
+												aux_fechaapartura, aux_fechainternacion, aux_cuidadointensivo, aux_fechafallecido, aux_asistenciarespiratoria,
+                                                aux_fechadiagnostico, aux_origenfinanciamiento);
                         ELSE
-                                RAISE NOTICE 'insert caso repetido';
-                                --Si ya fue registrada la localidad, sumamos los casos
-                                --UPDATE casos.determinacionpcr
-                                        --SET total = total + total_aux, 
-                                        --positivos = positivos + positivos_aux
-                                        --WHERE id_localidad = id_localidad_concatenado
-                                        --AND origenfinanciamiento = origen_aux AND fecharealizacion = fecha_aux;
+                                RAISE NOTICE 'este caso esta repetido NO SE INSERTO';
 
                 END IF;
             RAISE NOTICE 'id del caso %', aux_identificador;
@@ -132,16 +150,21 @@ BEGIN
             result.texto_resultado := 'Importación completada';
             result.texto_detalle := 'Importacion correcta del archivo '|| ruta_nombre_full;
 		    RETURN result;
+        EXCEPTION
+             WHEN OTHERS THEN
+                result.codigo_resultado := -1;
+                result.texto_resultado := 'Importación errónea o incompleta';
+                result.texto_detalle := 'ERROR AL PASAR DATOS AL SCHEMA CASOS';
+                RAISE NOTICE 'ERROR AL PASAR DATOS AL SCHEMA CASOS. ERROR SQLERRM: % SQLSTATE: %', SQLERRM, SQLSTATE;
+        RETURN result;
 		END;
 EXCEPTION
         WHEN OTHERS THEN
         result.codigo_resultado := -1;
         result.texto_resultado := 'Importación errónea o incompleta';
-        result.texto_detalle := 'ERROR AL PASAR DATOS AL SCHEMA CASOS';
+        result.texto_detalle := 'ERROR AL CARGAR LOS DATOS DESDE EL ARCHIVO';
         RAISE NOTICE 'ERROR AL CARGAR DATOS DEL ARCHIVO. ERROR SQLERRM: % SQLSTATE: %', SQLERRM, SQLSTATE;
         RETURN result;
 END;
 $$;
-
-
 

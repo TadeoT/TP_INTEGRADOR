@@ -26,7 +26,22 @@ create table casos.determinacionpcr (
 );
 create index idx_determinacionpcr_localidad ON casos.determinacionpcr (id_localidad);
 
+ALTER TABLE casos.caso ALTER COLUMN id_caso TYPE integer;
+ALTER TABLE casos.caso ALTER COLUMN id_clasificacion TYPE integer;
+ALTER TABLE casos.caso ALTER COLUMN id_provincia_carga TYPE integer;
+ALTER TABLE casos.caso ALTER COLUMN id_provincia_residencia TYPE integer;
+ALTER TABLE casos.caso ALTER COLUMN id_departamento TYPE integer;
+ALTER TABLE casos.caso ALTER COLUMN id_actualizacioncasos TYPE integer;
+ALTER TABLE casos.caso ALTER COLUMN identificador TYPE integer;
+ALTER TABLE casos.caso ALTER COLUMN fechainiciosintomas DROP NOT NULL;
+ALTER TABLE casos.caso ALTER COLUMN sexo TYPE character varying (8);
+ALTER TABLE casos.caso DROP CONSTRAINT  chk_origenfinanciamiento;
+ALTER TABLE casos.caso add  constraint chk_origenfinanciamiento check (origenfinanciamiento in ('Público','Privado')),
 
+
+
+CREATE SEQUENCE id_caso_a_seq START WITH 1
+ALTER TABLE casos.caso ALTER COLUMN id_caso SET DEFAULT nextval('id_caso_a_seq');
 
 CREATE SEQUENCE actualizacioncasos_a_seq START WITH 1
 ALTER TABLE casos.actualizacioncasos ALTER COLUMN id_actualizacioncasos SET DEFAULT nextval('actualizacioncasos_a_seq');
