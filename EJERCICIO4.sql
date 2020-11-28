@@ -1,6 +1,8 @@
 
 --A
-SELECT origenfinanciamiento, fecharealizacion, count(*) From casos.determinacionpcr GROUP BY origenfinanciamiento, fecharealizacion
+SELECT origenfinanciamiento, EXTRACT(MONTH FROM fecharealizacion) AS mes, count(*) AS cantidad_total From casos.determinacionpcr
+	GROUP BY origenfinanciamiento, mes
+	ORDER BY cantidad_total DESC
 --B
 SELECT to_char(A.fecha_actualizacion,'MM') as MES,territorio.provincia.nombre, COUNT(*) AS CASOS,
 									COUNT(CASE WHEN id_clasificacion = 2 THEN 1 END) AS CONFIRMADO ,

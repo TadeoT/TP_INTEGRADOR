@@ -37,7 +37,6 @@ INSERT INTO casos.clasificacion (id_clasificacion,codigo,descripcion) VALUES (3,
 select importacion_caso('C:\Users\tadeo\Dropbox\Facultad\Base_de_Datos\TP INTEGRADOR 2\Data','Covid19Casos(cortado).csv')
 
 
-
 CREATE OR REPLACE FUNCTION importacion_caso(
         ruta_archivo varchar(120),
         nombre_archivo varchar(120)
@@ -50,7 +49,7 @@ DECLARE
         cursor_caso CURSOR FOR
 		        SELECT id_evento_caso, clasificacion_resumen, residencia_pais_nombre, residencia_provincia_id, carga_provincia_id,
                         sexo, edad, edad_años_meses, fecha_inicio_sintomas, fecha_apertura, fecha_internacion, cuidado_intensivo, fecha_fallecimiento,
-                        asistencia_respiratoria_mecanica, fecha_diagnostico, origen_financiamiento
+                        asistencia_respiratoria_mecanica, fecha_diagnostico, origen_financiamiento, residencia_departamento_id
 		        FROM importacion.caso;
         ruta_nombre_full varchar (200);
         vCantFilas integer;
@@ -64,7 +63,8 @@ DECLARE
 	aux_id_pais2              smallint;    
         aux_id_provincia_residencia smallint; 
         aux_id_provincia_carga   smallint;
-        aux_id_departamento      smallint;    
+        aux_id_departamento      smallint;
+	aux_id_departamento2      int;    
         aux_id_actualizacioncasos smallint;  
         aux_sexo                 varchar(8); 
         aux_edad                 smallint;    
@@ -79,14 +79,12 @@ DECLARE
         aux_asistenciarespiratoria2 BOOLEAN;
         aux_fechadiagnostico     DATE;
         aux_origenfinanciamiento varchar(8);
-     total_rows integer;
 
 BEGIN
 	RAISE NOTICE 'Inicia carga datos';
         ruta_nombre_full = $1 || '\' || $2;
         DELETE  from importacion.caso;
         EXECUTE 'copy importacion.caso from '''||ruta_nombre_full||''' CSV HEADER DELIMITER '',''  ';
-
         SELECT ultima_actualizacion INTO aux_fechaActualizacion FROM importacion.caso LIMIT 1;
         -- vemos si existe esa fecha de actualizacion en la tabla actualizacioncasos
         IF NOT EXISTS (select fecha_actualizacion FROM casos.actualizacioncasos 
@@ -98,7 +96,6 @@ BEGIN
                                     WHERE  fecha_actualizacion = aux_fechaActualizacion;
         
         result.cant_filas := 0;
-
         BEGIN
             OPEN cursor_caso;
             LOOP 
@@ -107,14 +104,32 @@ BEGIN
                     INTO aux_identificador, aux_id_clasificacion, aux_id_pais, aux_id_provincia_residencia,aux_id_provincia_carga,
                         aux_sexo, aux_edad, aux_unidadedad, aux_fechainiciosintomas,
                         aux_fechaapartura, aux_fechainternacion, aux_cuidadointensivo, aux_fechafallecido, aux_asistenciarespiratoria,
-                        aux_fechadiagnostico, aux_origenfinanciamiento;
+                        aux_fechadiagnostico, aux_origenfinanciamiento, aux_id_departamento;
             EXIT WHEN NOT FOUND;
             IF aux_fechaActualizacion < '2020-01-01' THEN
                         CONTINUE;
                         END IF;
-				
-	    
+		
+		---Correcion id departamento
+		IF aux_id_departamento = 0 THEN
+			aux_id_departamento2 := NULL;
+		ELSE
+			If aux_id_provincia_residencia = 2 THEN
+				aux_id_departamento2 := 2000 + (aux_id_departamento*7);
+			ELSE
+				IF length (CAST (aux_id_departamento AS varchar)) = 2 THEN
+					aux_id_departamento2 = CAST( concat(CAST(aux_id_provincia_residencia AS varchar),'0', CAST (aux_id_departamento AS varchar)) as INTEGER);					
+				ELSE
+					IF length (CAST (aux_id_departamento AS varchar)) = 1 THEN
+						aux_id_departamento2 = CAST( concat(CAST(aux_id_provincia_residencia AS varchar),'00', CAST (aux_id_departamento AS varchar)) as INTEGER);
+					ELSE
+						aux_id_departamento2 = CAST( concat(CAST(aux_id_provincia_residencia AS varchar), CAST (aux_id_departamento AS varchar)) as INTEGER);
+					END IF;
+				END IF;			
+			END IF;
+		END IF;
 	
+		--
 		IF aux_id_clasificacion = 'Descartado' THEN
 		    aux_id_clasificacion2 := 1;
 		ELSE
@@ -126,7 +141,7 @@ BEGIN
 				END IF;
 			END IF;
 		END IF;
-
+		--
 		IF aux_id_pais = 'Argentina' THEN 
 			aux_id_pais2 := 1;
 		ELSE
@@ -134,7 +149,7 @@ BEGIN
 				aux_id_pais2 := 0;
 			END IF;
 		END IF;
-
+		--
                 IF aux_cuidadointensivo = 'SI' THEN 
                         aux_cuidadointensivo2 := true;
                 ELSE   
@@ -142,6 +157,7 @@ BEGIN
                                 aux_cuidadointensivo2 := false;
                         END IF;
                 END IF;
+		--
                 IF aux_asistenciarespiratoria = 'SI' THEN 
                         aux_asistenciarespiratoria2 := true;
                 ELSE   
@@ -149,7 +165,6 @@ BEGIN
                                 aux_asistenciarespiratoria2 := false;
                         END IF;
                 END IF;                
-
                                 
 	
             IF NOT EXISTS (SELECT * FROM casos.caso
@@ -163,7 +178,7 @@ BEGIN
 														fechadiagnostico,origenfinanciamiento)
                                         VALUES (aux_id_clasificacion2, aux_id_pais2, 
                                                 aux_id_provincia_residencia,aux_id_provincia_carga,
-                                                null,aux_id_fechaactualizacion,aux_identificador,
+                                                aux_id_departamento2 ,aux_id_fechaactualizacion,aux_identificador,
                                                 aux_sexo, aux_edad, aux_unidadedad, aux_fechainiciosintomas, 
 												aux_fechaapartura, aux_fechainternacion, aux_cuidadointensivo2, aux_fechafallecido, aux_asistenciarespiratoria2,
                                                 aux_fechadiagnostico, aux_origenfinanciamiento);
@@ -177,17 +192,21 @@ BEGIN
             result.codigo_resultado := 0;
             result.texto_resultado := 'Importación completada';
             result.texto_detalle := 'Importacion correcta del archivo '|| ruta_nombre_full;
-
 	    RAISE NOTICE 'Se insertaron % filas en total', result.cant_filas;
 		    RETURN result;
         EXCEPTION
              WHEN OTHERS THEN
+		---- La BD nos detalla cual fue el error, y si alguna constraint fue violada
                 result.codigo_resultado := -1;
                 result.texto_resultado := 'Importación errónea o incompleta';
                 result.texto_detalle := 'ERROR AL PASAR DATOS AL SCHEMA CASOS';
                 RAISE NOTICE 'ERROR AL PASAR DATOS AL SCHEMA CASOS. ERROR SQLERRM: % SQLSTATE: %', SQLERRM, SQLSTATE;
+		----- Borramos la tabla auxiliar, ya que conteiene datos erroneos que no pueden ser cargados
+		TRUNCATE TABLE importacion.casos;
         RETURN result;
 		END;
+	----- Borramos los datos de la tabla temporal, siendo que ya están cargados
+	    TRUNCATE TABLE importacion.casos;
 EXCEPTION
         WHEN OTHERS THEN
         result.codigo_resultado := -1;
