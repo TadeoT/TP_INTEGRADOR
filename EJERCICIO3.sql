@@ -37,10 +37,6 @@ INSERT INTO casos.clasificacion (id_clasificacion,codigo,descripcion) VALUES (3,
 select importacion_caso('C:\Users\tadeo\Dropbox\Facultad\Base_de_Datos\TP INTEGRADOR 2\Data','Covid19Casos(cortado).csv')
 
 
-aux_identificador, aux_id_clasificacion, aux_id_pais, aux_id_provincia_residencia,aux_id_provincia_carga,
-                        aux_sexo, aux_edad, aux_unidadedad, aux_fechainiciosintomas,
-                        aux_fechaapartura, aux_fechainternacion, aux_cuidadointensivo, aux_fechafallecido, aux_asistenciarespiratoria,
-                        aux_fechadiagnostico, aux_origenfinanciamiento;
 
 CREATE OR REPLACE FUNCTION importacion_caso(
         ruta_archivo varchar(120),
@@ -62,8 +58,10 @@ DECLARE
         aux_identificador integer;
         aux_fechaActualizacion date;
         aux_id_fechaactualizacion integer;
-        aux_id_clasificacion     smallint;    
-        aux_id_pais              smallint;    
+        aux_id_clasificacion     varchar(200);
+        aux_id_clasificacion2     smallint;    
+        aux_id_pais              varchar(200);
+	aux_id_pais2              smallint;    
         aux_id_provincia_residencia smallint; 
         aux_id_provincia_carga   smallint;
         aux_id_departamento      smallint;    
@@ -74,13 +72,17 @@ DECLARE
         aux_fechainiciosintomas  Date; 
         aux_fechaapartura        Date; 
         aux_fechainternacion     Date;
-        aux_cuidadointensivo     BOOLEAN;  
+        aux_cuidadointensivo     varchar(8);  
+        aux_cuidadointensivo2   BOOLEAN;
         aux_fechafallecido       DATE;
-        aux_asistenciarespiratoria BOOLEAN;
+        aux_asistenciarespiratoria varchar(8);
+        aux_asistenciarespiratoria2 BOOLEAN;
         aux_fechadiagnostico     DATE;
         aux_origenfinanciamiento varchar(8);
+     total_rows integer;
 
 BEGIN
+	RAISE NOTICE 'Inicia carga datos';
         ruta_nombre_full = $1 || '\' || $2;
         DELETE  from importacion.caso;
         EXECUTE 'copy importacion.caso from '''||ruta_nombre_full||''' CSV HEADER DELIMITER '',''  ';
@@ -89,24 +91,13 @@ BEGIN
         -- vemos si existe esa fecha de actualizacion en la tabla actualizacioncasos
         IF NOT EXISTS (select fecha_actualizacion FROM casos.actualizacioncasos 
                                 WHERE fecha_actualizacion = aux_fechaActualizacion ) THEN
-
                             INSERT INTO casos.actualizacioncasos (fecha_actualizacion) VALUES (aux_fechaActualizacion);
 							RAISE NOTICE 'insert fecharealizacion';
                             END IF;
         SELECT  id_actualizacioncasos INTO aux_id_fechaactualizacion from casos.actualizacioncasos 
                                     WHERE  fecha_actualizacion = aux_fechaActualizacion;
-
-
         
-        UPDATE importacion.caso set clasificacion_resumen = 1 WHERE clasificacion_resumen = 'Descartado';
-        UPDATE importacion.caso set clasificacion_resumen = 2 WHERE clasificacion_resumen = 'Confirmado';
-        UPDATE importacion.caso set clasificacion_resumen = 3 WHERE clasificacion_resumen = 'Sospechoso';
-        UPDATE importacion.caso set residencia_pais_nombre = 1 WHERE residencia_pais_nombre = 'Argentina';
-        UPDATE importacion.caso set residencia_pais_nombre = 0 WHERE residencia_pais_nombre = 'SIN ESPECIFICAR';
-
-
-        SELECT COUNT(1) INTO vCantFilas FROM importacion.caso;
-        result.cant_filas := vCantFilas;
+        result.cant_filas := 0;
 
         BEGIN
             OPEN cursor_caso;
@@ -121,6 +112,46 @@ BEGIN
             IF aux_fechaActualizacion < '2020-01-01' THEN
                         CONTINUE;
                         END IF;
+				
+	    
+	
+		IF aux_id_clasificacion = 'Descartado' THEN
+		    aux_id_clasificacion2 := 1;
+		ELSE
+			IF aux_id_clasificacion = 'Confirmado' THEN
+				aux_id_clasificacion2 := 2;
+			ELSE
+				IF aux_id_clasificacion = 'Sospechoso' THEN
+					aux_id_clasificacion2 := 3;
+				END IF;
+			END IF;
+		END IF;
+
+		IF aux_id_pais = 'Argentina' THEN 
+			aux_id_pais2 := 1;
+		ELSE
+			IF aux_id_pais = 'SIN ESPECIFICAR' THEN 
+				aux_id_pais2 := 0;
+			END IF;
+		END IF;
+
+                IF aux_cuidadointensivo = 'SI' THEN 
+                        aux_cuidadointensivo2 := true;
+                ELSE   
+                        IF aux_cuidadointensivo = 'NO' THEN
+                                aux_cuidadointensivo2 := false;
+                        END IF;
+                END IF;
+                IF aux_asistenciarespiratoria = 'SI' THEN 
+                        aux_asistenciarespiratoria2 := true;
+                ELSE   
+                        IF aux_asistenciarespiratoria = 'NO' THEN
+                                aux_asistenciarespiratoria2 := false;
+                        END IF;
+                END IF;                
+
+                                
+	
             IF NOT EXISTS (SELECT * FROM casos.caso
                                         WHERE identificador = aux_identificador
                                         AND id_actualizacioncasos = aux_id_fechaactualizacion) THEN
@@ -130,25 +161,24 @@ BEGIN
 														id_actualizacioncasos,identificador,sexo,edad,unidadedad,fechainiciosintomas,
 														fechaapartura, fechainternacion, cuidadointensivo, fechafallecido,asistenciarespiratoria,
 														fechadiagnostico,origenfinanciamiento)
-                                        VALUES (aux_id_clasificacion, aux_id_pais, 
+                                        VALUES (aux_id_clasificacion2, aux_id_pais2, 
                                                 aux_id_provincia_residencia,aux_id_provincia_carga,
-                                                6412,aux_id_fechaactualizacion,aux_identificador,
+                                                null,aux_id_fechaactualizacion,aux_identificador,
                                                 aux_sexo, aux_edad, aux_unidadedad, aux_fechainiciosintomas, 
-												aux_fechaapartura, aux_fechainternacion, aux_cuidadointensivo, aux_fechafallecido, aux_asistenciarespiratoria,
+												aux_fechaapartura, aux_fechainternacion, aux_cuidadointensivo2, aux_fechafallecido, aux_asistenciarespiratoria2,
                                                 aux_fechadiagnostico, aux_origenfinanciamiento);
+				result.cant_filas := result.cant_filas + 1;
                         ELSE
                                 RAISE NOTICE 'este caso esta repetido NO SE INSERTO';
-
                 END IF;
             RAISE NOTICE 'id del caso %', aux_identificador;
-
-
-
             END LOOP;
             CLOSE cursor_caso;
             result.codigo_resultado := 0;
             result.texto_resultado := 'Importación completada';
             result.texto_detalle := 'Importacion correcta del archivo '|| ruta_nombre_full;
+
+	    RAISE NOTICE 'Se insertaron % filas en total', result.cant_filas;
 		    RETURN result;
         EXCEPTION
              WHEN OTHERS THEN
@@ -167,4 +197,3 @@ EXCEPTION
         RETURN result;
 END;
 $$;
-

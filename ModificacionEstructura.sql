@@ -34,6 +34,7 @@ ALTER TABLE casos.caso ALTER COLUMN id_departamento TYPE integer;
 ALTER TABLE casos.caso ALTER COLUMN id_actualizacioncasos TYPE integer;
 ALTER TABLE casos.caso ALTER COLUMN identificador TYPE integer;
 ALTER TABLE casos.caso ALTER COLUMN fechainiciosintomas DROP NOT NULL;
+ALTER TABLE casos.caso ALTER COLUMN fechadiagnostico DROP NOT NULL;
 ALTER TABLE casos.caso ALTER COLUMN sexo TYPE character varying (8);
 ALTER TABLE casos.caso DROP CONSTRAINT  chk_origenfinanciamiento;
 ALTER TABLE casos.caso add  constraint chk_origenfinanciamiento check (origenfinanciamiento in ('Público','Privado')),

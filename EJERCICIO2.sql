@@ -87,8 +87,8 @@ BEGIN
         DELETE  from importacion.determinacionespcr;
         EXECUTE 'copy importacion.determinacionespcr from '''||ruta_nombre_full||''' CSV HEADER DELIMITER '',''  ';
 
-        SELECT COUNT(1) INTO vCantFilas FROM importacion.determinacionespcr;
-        result.cant_filas := vCantFilas;
+        result.cant_filas := 0;
+
 
         UPDATE importacion.determinacionespcr set positivos = 0 where positivos is null;
 
@@ -148,6 +148,8 @@ BEGIN
                                 --Creamos una nueva fila
                                 INSERT INTO casos.determinacionpcr
                                         VALUES (DEFAULT,id_localidad_concatenado, fecha_aux, total_aux, positivos_aux, origen_aux);
+
+                                result.cant_filas := result.cant_filas + 1;
                         ELSE
                                 --Si ya fue registrada la localidad, sumamos los casos
                                 UPDATE casos.determinacionpcr
@@ -155,6 +157,8 @@ BEGIN
                                         positivos = positivos + positivos_aux
                                         WHERE id_localidad = id_localidad_concatenado
                                         AND origenfinanciamiento = origen_aux AND fecharealizacion = fecha_aux;
+
+                                result.cant_filas := result.cant_filas + 1;
 
                 END IF;
 
